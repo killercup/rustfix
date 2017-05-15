@@ -1,6 +1,8 @@
 //! Rustc Diagnostic JSON Output
-//! 
+//!
 //! The following data types are copied from [rust-lang/rust](https://github.com/rust-lang/rust/blob/de78655bca47cac8e783dbb563e7e5c25c1fae40/src/libsyntax/json.rs)
+
+use std::fmt::Write; // <- unused on purpose!
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Diagnostic {

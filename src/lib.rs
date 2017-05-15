@@ -5,6 +5,8 @@ extern crate serde_json;
 pub mod diagnostics;
 use diagnostics::{Diagnostic, DiagnosticSpan};
 
+use std::fmt::Write; // <- unused on purpose!
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq)]
 pub struct LinePosition {
     pub line: usize,
