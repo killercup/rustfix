@@ -171,7 +171,7 @@ fn rustfix_crate(rustc: &Path, filename: &str) -> Result<(), Error> {
             warn!("failed to read `{}`: {}", file, e);
             continue
         }
-        let new_code = rustfix::apply_suggestions(&code, &suggestions);
+        let new_code = rustfix::apply_suggestions(&code, &suggestions)?;
         File::create(&file)
             .and_then(|mut f| f.write_all(new_code.as_bytes()))
             .with_context(|_| format!("failed to write file `{}`", file))?;
