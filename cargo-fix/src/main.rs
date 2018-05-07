@@ -169,6 +169,8 @@ fn rustfix_crate(rustc: &Path, filename: &str) -> Result<FixedCrate, Error> {
     // indicating fixes that we can apply.
     let stderr = str::from_utf8(&output.stderr).context("failed to parse rustc stderr as utf-8")?;
 
+    trace!("got {} bytes of output from rustc, will now collect suggestions", stderr.len());
+
     let suggestions = stderr.lines()
         .filter(|x| !x.is_empty())
 
