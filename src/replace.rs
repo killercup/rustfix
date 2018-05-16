@@ -14,9 +14,9 @@ enum State {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Span {
     /// Start of this span in parent data
-    start: usize,
+    start: Option<usize>,
     /// up to end inculding
-    end: usize,
+    end: Option<usize>,
     data: State,
 }
 
@@ -35,8 +35,8 @@ impl Data {
             parts: vec![
                 Span {
                     data: State::Initial,
-                    start: 0,
-                    end: data.len(),
+                    start: Some(0),
+                    end: Some(data.len()),
                 },
             ],
         }
@@ -46,7 +46,11 @@ impl Data {
     pub fn to_vec(&self) -> Vec<u8> {
         self.parts.iter().fold(Vec::new(), |mut acc, d| {
             match d.data {
-                State::Initial => acc.extend_from_slice(&self.original[d.start..d.end]),
+                State::Initial => {
+                    // initital spans always have start and end
+                    let range = d.start.unwrap()..d.end.unwrap();
+                    acc.extend_from_slice(&self.original[range])
+                },
                 State::Replaced(ref d) => acc.extend_from_slice(&d),
             };
             acc
@@ -69,7 +73,7 @@ impl Data {
             self.original.len()
         );
 
-        // let insert_only = from > up_to_and_including;
+        let insert_only = from > up_to_and_including;
 
         // Since we error out when replacing an already replaced chunk of data,
         // we can take some shortcuts here. For example, there can be no
@@ -83,7 +87,10 @@ impl Data {
         let new_parts = {
             let index_of_part_to_split = self.parts
                 .iter()
-                .position(|p| p.start <= from && p.end >= up_to_and_including)
+                .position(|p| {
+                    p.start.map_or(false, |s| s <= from) &&
+                    (insert_only || p.end.map_or(false, |e| e >= up_to_and_including))
+                })
                 .ok_or_else(|| {
                     use log::Level::Debug;
                     if log_enabled!(Debug) {
@@ -128,26 +135,26 @@ impl Data {
             }
 
             // Keep initial data on left side of part
-            if from > part_to_split.start {
+            if from > part_to_split.start.unwrap() {
                 new_parts.push(Span {
-                    start: part_to_split.start,
-                    end: from,
+                    start: Some(part_to_split.start.unwrap()),
+                    end: Some(from),
                     data: State::Initial,
                 });
             }
 
             // New part
             new_parts.push(Span {
-                start: from,
-                end: up_to_and_including,
+                start: if insert_only { None } else { Some(from) },
+                end: if insert_only { None } else { Some(up_to_and_including) },
                 data: State::Replaced(data.into()),
             });
 
             // Keep initial data on right side of part
-            if up_to_and_including < part_to_split.end {
+            if up_to_and_including < part_to_split.end.unwrap() {
                 new_parts.push(Span {
-                    start: up_to_and_including + 1,
-                    end: part_to_split.end,
+                    start: Some(up_to_and_including + 1),
+                    end: Some(part_to_split.end.unwrap()),
                     data: State::Initial,
                 });
             }
@@ -209,6 +216,12 @@ mod tests {
 
         d.replace_range(0, 2, b"baz").unwrap();
         assert_eq!("bazbar!", str(&d.to_vec()));
+
+        d.replace_range(3, 2, b"?").unwrap();
+        assert_eq!("baz?bar!", str(&d.to_vec()));
+
+        d.replace_range(3, 4, b"?").unwrap();
+        assert_eq!("baz?bar?", str(&d.to_vec()));
     }
 
     #[test]
